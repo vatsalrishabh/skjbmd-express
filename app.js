@@ -68,7 +68,7 @@ app.use('/api/payments', paymentRoutes);
 
 // app.use('/api/dashboard', dashboardRoutes);
 
-app.use(express.static(path.join(__dirname, 'dist'))); // Change 'build' to your frontend folder if needed
+ // app.use(express.static(path.join(__dirname, 'dist'))); Change 'build' to your frontend folder if needed
 
 // Redirect all requests to the index.html file
 
