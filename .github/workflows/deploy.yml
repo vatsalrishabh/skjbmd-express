@@ -1,0 +1,26 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: 198.38.87.182        # Your VPS IP address
+          username: root             # Or your VPS user if different
+          key: ${{ secrets.SSH_PRIVATE_KEY }}  # Use the secret you created
+          script: |
+            cd /home/skjbmd/api_skjbmd_org
+            git pull origin main
+            npm install
+            pm2 reload api.skjbmd.org

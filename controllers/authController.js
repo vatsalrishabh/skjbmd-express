@@ -1,13 +1,21 @@
+const formidable = require('formidable');
 const { sendOtpEmail } = require('../utils/mailer');
 const { sendOtpEmailForgot } = require('../utils/forgotOtpmail');
+const {sendWhatsappMessage } = require('../controllers/whatsappController');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
+const IdCardPayment  = require('../models/IdCardPayment')
 const { generateUniqueId } = require('./uniqueIdGenerator');
 const { handleErrorWrapper } = require('../middleware/errorHandler');
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const { makeJwtToken } = require('../utils/jwtToken');
 
-const SUBJECT = "Your OTP for PulseCare.";
+
+
+
+const SUBJECT = "Your OTP for SKJBMD.";
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
 
@@ -15,51 +23,151 @@ const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
 //@ method POST api/auth/registerUser
 //@ access - PUBLIC
 const registerUser = handleErrorWrapper(async (req, res) => {
-    console.log(req.body)
-    const { email, mobile, role } = req.body;
-    if (await User.findOne({ $and: [{ email }, { role }] })) {
+    const form = new formidable.IncomingForm({ keepExtensions: true });
+  
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        console.error('❌ Form parsing error:', err);
+        return res.status(500).json({ error: 'Form parsing failed' });
+      }
+  
+     
+      // console.log('📸 Files:', files);
+  
+      const email = fields.email[0];
+      const contactNumber = fields.contactNumber[0];
+  
+      const sanitizedNumber = contactNumber.replace(/\D/g, ''); // remove non-digits
+      const mobileNumber = `91${sanitizedNumber}`;
+  
+      // Check if the user already exists
+      if (await User.findOne({ $and: [{ email: email }, { role: "member" }] })) {
         return res.status(400).json({ message: 'User already registered. Please log in.' });
-    }
-
-    const otp = await Otp.findOneAndUpdate(
-        { email },
-        { otp: generateOtp() },
+      }
+  
+      // Generate OTP
+      const generatedOtp = generateOtp();
+      const otp = await Otp.findOneAndUpdate(
+        { contactNumber: contactNumber },
+        { email: email, otp: generatedOtp },
         { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    await sendOtpEmail(email, otp.otp, "To verify your account, use this OTP.", SUBJECT);
-    res.status(200).json({ message: 'Registration initiated. OTP sent to email.' });
-});
+      );
+  
+      // Send OTP email
+      await sendOtpEmail(email, generatedOtp, "To verify your account, use this OTP.", SUBJECT);
+  
+      // Send OTP via WhatsApp
+      const whatsappMessage = `🔐 SKJBMD Registration OTP\n\nYour OTP is: *${generatedOtp}*\n\nPlease do not share it with anyone.`;
+      const result = await sendWhatsappMessage(mobileNumber, whatsappMessage);
+  
+      // Respond with success
+      res.status(200).json({ message: 'Registration initiated. OTP sent to email and WhatsApp.' });
+    });
+  });
+  
+  
 
 
 //@desc- get all data along with otp and verify from OTP schema and register
 //@ method POST api/auth/verifyOtp
 //@ access - PUBLIC
 const verifyOtp = handleErrorWrapper(async (req, res) => {
-    console.log(req.body)
-    const { email, otp, name, mobile, password, age, gender, role, address } = req.body;
+    const form = new formidable.IncomingForm({ keepExtensions: true });
+  
+  form.parse(req, async (err, fields, files) => {
+  if (err) {
+    console.error('❌ Form parsing error:', err);
+    return res.status(500).json({ error: 'Form parsing failed' });
+  }
 
-    const validOtp = await Otp.findOneAndDelete({ email, otp });
-    if (!validOtp) return res.status(400).json({ message: 'Invalid OTP. Try again.' });
+  const {
+    email,
+    otp,
+    fullName,
+    password,
+    contactNumber,
+    age,
+    gender,
+    role,
+    fatherOrHusband,
+    aadhaarNumber,
+    pancard,
+    state,
+    district,
+    streetAddress,
+    pincode
+  } = Object.fromEntries(
+    Object.entries(fields).map(([key, val]) => [key, val[0]])
+  );
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+  // ✅ Only use contactNumber after it's initialized above
+  let savedFilePath = null;
+  const profileFile = files.profilePhoto?.[0];
+  if (profileFile) {
+    const tempPath = profileFile.filepath;
+    const ext = path.extname(profileFile.originalFilename).toLowerCase();
+    const uniqueName = `${contactNumber || Date.now()}${ext}`;
+    const uploadPath = path.join(__dirname, '../uploads');
 
-    const newUser = new User({
-        userId: await generateUniqueId(),
-        name,
-        email,
-        mobile,
-        password: hashedPassword,
-        age,
-        gender,
-        role,
-        blocked: role === "doctor", 
-        address: address || { street: "NA", city: "NA", state: "NA", zipCode: "NA", country: "NA" }
-    });
-    await newUser.save();
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
 
-    res.status(200).json({ message: 'Registration successful.' });
+    const finalPath = path.join(uploadPath, uniqueName);
+
+    try {
+      fs.copyFileSync(tempPath, finalPath);
+      savedFilePath = `/uploads/${uniqueName}`;
+    } catch (err) {
+      console.error('❌ Error saving file:', err);
+      return res.status(500).json({ message: 'Error saving file.' });
+    }
+  }
+
+  // 1. Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // 2. Construct address
+  const address = {
+    street: streetAddress || '',
+    city: district || '',
+    state: state || '',
+    zipCode: pincode || '',
+    country: 'India'
+  };
+
+  // 3. Create user
+  const newUser = new User({
+    userId: await generateUniqueId(),
+    name: fullName,
+    fatherName: fatherOrHusband,
+    age: Number(age),
+    contact: contactNumber,
+    email,
+    password: hashedPassword,
+    gender,
+    role: "member",
+    address,
+    aadharCard: aadhaarNumber,
+    pancard: pancard || '',
+    blocked: false,
+    dpUrl: savedFilePath || null
+  });
+
+  await newUser.save();
+
+  const validOtp = await Otp.findOneAndDelete({ email, otp });
+  if (!validOtp) {
+    return res.status(400).json({ message: 'Invalid OTP. Try again.' });
+  }
+
+  return res.status(200).json({ message: 'Registration successful.' });
 });
+
+
+  });
+  
+  
 
 //@desc- get username password and role and sent jwt and userdata
 //@ method POST api/auth/loginUser
@@ -75,16 +183,21 @@ const loginUser = handleErrorWrapper(async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(400).json({ message: 'Invalid email or password.' });
     }
+    
+     // Convert to plain object and delete password
+  const userObj = user.toObject();
+  delete userObj.password;
 
-      const token = makeJwtToken({ email, role: user.role });
+  // Create token using safe object
+  const token = makeJwtToken({ user: userObj });
 
-    res.status(200).json({
-        message: 'Login successful.',
-        token: token,
-        email,
-        name: user.name,
-        userId: user.userId
-    });
+  res.status(200).json({
+    message: 'Login successful.',
+    token,
+    email: user.email,
+    name: user.name,
+    userId: user.userId,
+  });
 });
 
 
@@ -93,7 +206,7 @@ const loginUser = handleErrorWrapper(async (req, res) => {
 //@ access - PUBLIC
 const updatePassword = handleErrorWrapper(async (req, res) => {
     console.log(req.body)
-    console.log(req.body)
+
     const {  email,role } = req.body;
     const user = await User.findOne({ email , role});
 
@@ -182,14 +295,81 @@ const apprDoctor = handleErrorWrapper(async (req, res) => {
     res.status(200).json({ message: `Doctor ${blocked ? 'blocked' : 'approved'} successfully.`, data:allDoctors });
 });
 
-//@desc- get a list of all doctores
+//@desc- get a list of all users
 //@ method GET api/auth/admin/getAllDoctors
 //@ access - Admin
 const getAllDoctors = handleErrorWrapper(async (req, res) => {
-    const allDoctors = await User.find({role: 'doctor'})
+   const allDoctors = await User.find({}).select("-password");
     res.status(200).json({ message: "All docotrs fetched " , data:allDoctors });
 });
 
+// @desc    Update user role
+// @route   PUT /api/auth/admin/updateRole/:id
+// @access  Admin
+const updateUserRole = async (req, res) => {
+  try {
+    console.log(req.params.userId)
+     console.log(req.body.role)
+    const updatedUser = await User.findOneAndUpdate(
+      { userId: req.params.userId },
+      { role: req.body.role },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+// @desc    Update user role
+// @route   PUT /api/auth/admin/getAllIdCardPayment/:id
+// @access  Admin
+const getAllIdCardPayment = async (req, res) => {
+  try {
+    const { userId, contact } = req.query;
+
+    let filter = {};
+
+    if (userId) {
+      filter.userId = userId; // {userId:11111111}
+    } else if (contact) {
+      filter.contact = contact; // {userId:8123573669}
+    }
+
+     // Find the user first
+    const user = await User.findOne(filter);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Use user's _id to fetch payments
+    const payments = await IdCardPayment.find(filter);
+
+    if (!payments || payments.length === 0) {
+      return res.status(404).json({ message: "No matching records found" });
+    }
+
+    // Attach user's name to each payment
+    const enrichedPayments = payments.map(payment => ({
+      ...payment.toObject(),
+      userName: user.name
+    }));
+
+    res.status(200).json({ data: enrichedPayments });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 
 
@@ -203,4 +383,6 @@ module.exports = {
     addDoctor,
     apprDoctor,
     getAllDoctors,
+    updateUserRole,
+    getAllIdCardPayment,
 };

@@ -14,30 +14,28 @@ const sendOtpEmail = (to, otp, subject) => {
     const mailOptions = {
         from: process.env.PulseCareEmail, // Sender email address
         to, // Recipient email address
-        subject: subject, // Email subject
-        text: `${subject}: ${otp}.`,
+        subject: subject,
+        text: `${subject}: ${otp}. Use this OTP to verify your email.`,
         html: `
-            <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
-                    <div style="background-color: #4CAF50; padding: 20px; text-align: center;">
-                        <h1 style="color: #ffffff; font-size: 24px; font-weight: bold; margin: 0;">Welcome to DKLean!</h1>
-                    </div>
-                    <div style="padding: 20px; color: #333; line-height: 1.6;">
-                        <p>Dear User,</p>
-                        <p>Thank you for choosing DKLean. To ensure the security of your account, please verify your email with the One-Time Password (OTP) below:</p>
-                        <div style="text-align: center; margin: 20px 0;">
-                            <span style="font-size: 28px; font-weight: bold; color: #4CAF50;">${otp}</span>
-                        </div>
-                        <p>Please use the OTP above to complete your registration or login.</p>
-                        <p>At DKLean, we are committed to delivering the best cleaning solutions to make your life easier and your spaces spotless.</p>
-                    </div>
-                    <div style="background-color: #f1f1f1; padding: 15px; text-align: center;">
-                        <p style="font-size: 14px; color: #555; margin: 0;">Need help? Contact our support team at <a href="mailto:support@dklean.com" style="color: #4CAF50; text-decoration: none;">support@dklean.com</a>.</p>
-                        <p style="font-size: 12px; color: #888; margin: 10px 0 0;">&copy; 2024 DKLean. All rights reserved.</p>
-                    </div>
-                </div>
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #ffffff; color: #333;">
+          <div style="max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px;">
+            <h2 style="text-align: center; color: #8B0000;">ईमेल सत्यापन OTP</h2>
+            <p>नमस्ते,</p>
+            <p>आपके ईमेल पते की पुष्टि के लिए नीचे दिया गया OTP दर्ज करें:</p>
+            <div style="text-align: center; margin: 20px 0;">
+              <strong style="font-size: 26px; color: #000;">${otp}</strong>
             </div>
+            <p>OTP केवल कुछ मिनटों के लिए मान्य है। कृपया शीघ्रता से उपयोग करें।</p>
+            <p>यदि आपने यह अनुरोध नहीं किया है, तो इस ईमेल को अनदेखा करें।</p>
+            <hr />
+            <p style="font-size: 12px; color: #888;">यह एक स्वचालित ईमेल है। उत्तर न दें।</p>
+            <p style="font-size: 12px; color: #888;">समर्थन के लिए संपर्क करें: 
+              <a href="mailto:support@skjbmd.org" style="color: #8B0000;">support@skjbmd.org</a>
+            </p>
+          </div>
+        </div>
         `,
+      
     };
 
     // Send the email

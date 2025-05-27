@@ -10,6 +10,7 @@ const { Server } = require('socket.io'); // ✅ correct // 3. socket server
 const app = express();
 const server = http.createServer(app);  // 4. express ke app ko http me ghusao aur chhota server banao
 
+
 const io = new Server(
   server,
   {
@@ -18,6 +19,7 @@ const io = new Server(
     }
   }
 ) // 5. create io 
+
 
 // Export io so other modules (like controllers) can use it
 module.exports.io = io;
@@ -54,6 +56,8 @@ const serviceRoutes = require('./routes/serviceRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const downloadRoutes = require('./routes/downloadRoutes')
+const rolesRoutes = require('./routes/rolesRoutes')
 
 const { env } = require('process');
 // const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -64,17 +68,24 @@ app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/download',downloadRoutes);
+
+app.use('/api/admin',rolesRoutes);
 
 
 // app.use('/api/dashboard', dashboardRoutes);
 
  // app.use(express.static(path.join(__dirname, 'dist'))); Change 'build' to your frontend folder if needed
 
+// Serve static images from /uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Redirect all requests to the index.html file
 
 app.get("*", (req, res) => {
-  return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  return res.sendFile(path.join(__dirname, 'out', 'index.html'));
 });
+
 
 
 // Set port and listen
