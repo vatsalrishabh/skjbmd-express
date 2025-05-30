@@ -5,6 +5,7 @@ const { createOrder,
     paymentSuccess,
     donorDetails,
     donateNow,
+    donationReceipt,
 } = require('../controllers/donationController')
 
 
@@ -18,6 +19,8 @@ router.post('/verifyPayment',verifyPayment);  //http://localhost:3000/api/donati
 router.post('/paymentSuccess',paymentSuccess);  //http://localhost:3000/api/donations/paymentSuccess
 
 router.get('/donorDetails',donorDetails);  //http://localhost:3000/api/donations/donorDetails
+
+router.get('/donationReceipt/:transactionId?',donationReceipt);  //http://localhost:3000/api/donations/donationReceipt
 
 router.post('/donateNow',donateNow);  //http://localhost:3000/api/donations/donateNow
 
