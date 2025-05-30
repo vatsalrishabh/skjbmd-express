@@ -21,9 +21,6 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Build Next.js app
-      run: npm run build
-
     - name: Copy project to VPS
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -42,5 +39,4 @@ jobs:
         script: |
           cd /home/skjbmd/api_skjbmd_org
           npm install
-          npm run build
-          pm2 restart api.skjbmd.org  || pm2 start npm --name "api.skjbmd.org " -- start
+          pm2 restart api.skjbmd.org || pm2 start npm --name "api.skjbmd.org" -- start
