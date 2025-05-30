@@ -50,6 +50,7 @@ const donationSchema = new mongoose.Schema({
     required: true, // Razorpay transaction ID
     unique: true, 
   },
+  pancard:String,
 });
 
 // Create the donation model using the schema

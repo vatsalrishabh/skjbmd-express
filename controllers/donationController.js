@@ -9,8 +9,8 @@ const User = require('../models/User');
 console.log(process.env.RAZORPAY_KEY_ID);
 console.log(process.env.RAZORPAY_KEY_SECRET);
 const razorpay = new Razorpay({
-  key_id: "rzp_test_l0gnUnaG8U4VmM", // Use environment variables
-  key_secret: "5ji43g1ji2Hnz1f1DJWpNX4T",
+  key_id: process.env.RAZORPAY_KEY_ID, // Use environment variables
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 // Function to create an order
@@ -256,6 +256,7 @@ const donateNow = async (req, res) => {
      razorpayId: order?.id,
      userId: userId,
      transactionId: transactionId,
+     pancard:pancard,
    });
 
    await donation.save();
