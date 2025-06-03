@@ -56,8 +56,9 @@ const serviceRoutes = require('./routes/serviceRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const donationRoutes = require('./routes/donationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
-const downloadRoutes = require('./routes/downloadRoutes')
-const rolesRoutes = require('./routes/rolesRoutes')
+const downloadRoutes = require('./routes/downloadRoutes');
+const rolesRoutes = require('./routes/rolesRoutes');
+const androidRoutes = require("./routes/androidRoutes");
 
 const { env } = require('process');
 // const dashboardRoutes = require('./routes/dashboardRoutes');
@@ -73,7 +74,7 @@ app.use('/api/download',downloadRoutes);
 app.use('/api/admin',rolesRoutes);
 
 
-// app.use('/api/dashboard', dashboardRoutes);
+ app.use('/api/expoGo', androidRoutes);
 
  // app.use(express.static(path.join(__dirname, 'dist'))); Change 'build' to your frontend folder if needed
 

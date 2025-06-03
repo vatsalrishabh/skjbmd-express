@@ -308,6 +308,16 @@ const donationReceipt = async (req, res) => {
 };
 
 
+// @Method - POST
+// @access - donor
+// @Route - /api/donations/paymentrzp 
+
+const paymentrzp = async (req, res) => {
+  console.log(req.body);
+};
+
+
+
 // Export functions
 module.exports = {
   createOrder,
@@ -316,4 +326,5 @@ module.exports = {
   donorDetails,
   donateNow,
   donationReceipt,
+  paymentrzp,
 };
