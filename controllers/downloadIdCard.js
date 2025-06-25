@@ -6,6 +6,7 @@ const { sendOtpEmail } = require('../utils/mailer');
 const {sendWhatsappMessage } = require('../controllers/whatsappController');
 const Razorpay = require('razorpay'); 
 const { validateWebhookSignature } = require('razorpay/dist/utils/razorpay-utils');
+const { default: SmartphoneOtp } = require('../models/SmartphoneOtp');
 
 
 
@@ -207,7 +208,76 @@ const data = await User.findOne({ contact: mobile }).select('-password');
  res.status(400).json({ success: false, message: 'Verification failed' });
     console.log("Payment verification failed");
   }
-})
+});
+
+
+// @Method-POST
+// @access-public
+// @Route- /api/download/smartPhoneChat
+const smartPhoneChat = handleErrorWrapper(async (req, res) => {
+  const { name, phone } = req.body;
+  const ip = req.ip;
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  const user = await SmartphoneOtp.findOne({ phone });
+
+  const sanitizedNumber = phone.replace(/\D/g, '');
+  const mobileNumber = `91${sanitizedNumber}`;
+  const whatsappMessage = `🔐 SKJBMD Chat registration OTP\n\nYour OTP is: *${otp}*\n\nPlease do not share it with anyone.`;
+
+  if (!user) {
+    // New user: Create document and send OTP
+    await SmartphoneOtp.create({ name, phone, otp, ip });
+
+    const result = await sendWhatsappMessage(mobileNumber, whatsappMessage);
+    return res.status(200).json({ message: 'New user created. OTP sent successfully.' });
+  } else {
+    // Existing user: Update OTP & resend
+    user.otp = otp;
+    user.ip = ip;
+    user.createdAt = new Date();
+    await user.save();
+
+    const result = await sendWhatsappMessage(mobileNumber, whatsappMessage);
+    return res.status(200).json({ message: 'User already exists. OTP re-sent.', user });
+  }
+});
+
+
+
+// @Method-POST
+// @Access-Public
+// @Route- /api/download/verifyOtpSmartphoneChat
+const verifyOtpSmartphoneChat = handleErrorWrapper(async (req, res) => {
+  const { phone, otp } = req.body;
+
+  if (!phone || !otp) {
+    return res.status(400).json({ message: 'Phone and OTP are required.' });
+  }
+
+  // Sanitize phone
+  const sanitizedPhone = phone.replace(/\D/g, '');
+
+  // Check if number exists in DB
+  const user = await SmartphoneOtp.findOne({ phone: sanitizedPhone });
+
+  if (!user) {
+    return res.status(404).json({ message: 'Phone number is not registered.' });
+  }
+
+  // Check OTP match
+  if (user.otp !== otp) {
+    return res.status(401).json({ message: 'Incorrect OTP.' });
+  }
+
+  // Success
+  return res.status(200).json({
+    isLoggedIn: true,
+    name: user.name,
+    phone: user.phone,
+  });
+});
+
 
   
   
@@ -219,4 +289,6 @@ module.exports = {
  verifyOtp,
  initiatePayment,
  verifyPayment,
+ smartPhoneChat,
+ verifyOtpSmartphoneChat
 };

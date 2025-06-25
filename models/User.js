@@ -23,6 +23,7 @@ const roles = [
   'mediaprabhari',
 
   // State Level
+  'pradeshprabhari',                // ✅ Added
   'pradeshpramukh',
   'pradeshsahpramukh',
   'pradeshsangathanmantri',
@@ -32,6 +33,9 @@ const roles = [
   'pradeshpracharak',
   'pradeshsahpracharak',
   'pradeshmediaprabhari',
+
+  // Mandal Level
+  'mandalprabhari',                 // ✅ Added
 
   // District Level
   'jilapramukh',
@@ -47,6 +51,7 @@ const roles = [
   // General
   'member',
 ];
+
 
 // User schema including the nested address schema
 const UserSchema = new mongoose.Schema({
