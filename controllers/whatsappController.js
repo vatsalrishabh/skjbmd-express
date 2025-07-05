@@ -6,7 +6,6 @@ let latestQr = null;
 let isReady = false;
 let client;
 
-// Puppeteer launch config for stability (especially on Windows)
 const puppeteerConfig = {
   headless: true,
   args: [
@@ -21,17 +20,13 @@ const puppeteerConfig = {
   ],
 };
 
-// Function to initialize client
 function createClient() {
   client = new Client({
-    authStrategy: new LocalAuth({
-      clientId: 'client-one' // optional: allows multiple sessions if needed
-    }),
+    authStrategy: new LocalAuth({ clientId: 'client-one' }),
     puppeteer: puppeteerConfig
   });
 
   client.on('qr', async (qr) => {
-    // console.log("📲 QR Code received.");
     latestQr = await qrcode.toDataURL(qr);
     ioInstance.emit('qr', latestQr);
   });
@@ -51,14 +46,12 @@ function createClient() {
     isReady = false;
     console.log("❌ WhatsApp disconnected:", reason);
     ioInstance.emit('status', 'disconnected');
-
     try {
       await client.destroy();
       console.log("🧹 Cleaned up old client. Restarting in 5s...");
     } catch (err) {
       console.error("Error destroying client:", err.message);
     }
-
     setTimeout(() => {
       console.log("♻️ Reinitializing WhatsApp...");
       createClient();
@@ -75,16 +68,9 @@ function initWhatsAppSocket(io) {
 
   io.on('connection', (socket) => {
     console.log("🟢 Client connected to Socket.io:", socket.id);
-
     socket.emit('message', 'Connecting to WhatsApp...');
-
-    if (latestQr) {
-      socket.emit('qr', latestQr);
-    }
-
-    if (isReady) {
-      socket.emit('status', 'ready');
-    }
+    if (latestQr) socket.emit('qr', latestQr);
+    if (isReady) socket.emit('status', 'ready');
 
     socket.on('disconnect', () => {
       console.log("🔴 Client disconnected:", socket.id);
@@ -92,23 +78,18 @@ function initWhatsAppSocket(io) {
   });
 }
 
-// Global error handler
-process.on('unhandledRejection', (reason, p) => {
-  console.error('Unhandled Rejection at:', p, 'reason:', reason);
-});
-process.on('uncaughtException', err => {
-  console.error('Uncaught Exception:', err);
-});
-
-
 const sendWhatsappMessage = async (mobileNumber, text) => {
   try {
     if (!client || !isReady) {
       throw new Error("WhatsApp client is not ready.");
     }
 
-    // Ensure number is in correct format (e.g., '919876543210@c.us')
     const numberId = `${mobileNumber}@c.us`;
+    const isRegistered = await client.isRegisteredUser(numberId);
+
+    if (!isRegistered) {
+      throw new Error("Number is not registered on WhatsApp.");
+    }
 
     await client.sendMessage(numberId, text);
     console.log(`📤 Message sent to ${mobileNumber}: ${text}`);
@@ -119,5 +100,11 @@ const sendWhatsappMessage = async (mobileNumber, text) => {
   }
 };
 
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection at:', p, 'reason:', reason);
+});
+process.on('uncaughtException', err => {
+  console.error('Uncaught Exception:', err);
+});
 
 module.exports = { initWhatsAppSocket, sendWhatsappMessage };
