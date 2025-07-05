@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const smartphoneOtpSchema = new mongoose.Schema({
   name: {
@@ -26,4 +26,5 @@ const smartphoneOtpSchema = new mongoose.Schema({
   },
 });
 
-export default mongoose.model('SmartphoneOtp', smartphoneOtpSchema);
+const SmartphoneOtp = mongoose.model('SmartphoneOtp', smartphoneOtpSchema);
+module.exports = SmartphoneOtp;
