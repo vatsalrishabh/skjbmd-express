@@ -6,7 +6,7 @@ const path = require('path');
 const morgan = require('morgan');
 const express = require('express'); //  1. express server 
 const http = require('http'); // 2. http server 
-const { Server } = require('socket.io'); // ✅ correct // 3. socket server
+const { Server } = require('socket.io'); //
 const app = express();
 const server = http.createServer(app);  // 4. express ke app ko http me ghusao aur chhota server banao
 
@@ -21,7 +21,7 @@ const io = new Server(
 ) // 5. create io 
 
 
-// Export io so other modules (like controllers) can use it
+// Export io so other modules (like controllers) can use it .
 module.exports.io = io;
 const { initWhatsAppSocket } = require('./controllers/whatsappController');
 initWhatsAppSocket(io);
@@ -81,13 +81,14 @@ app.use('/api/admin',rolesRoutes);
 // Serve static images from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Redirect all requests to the index.html file
+// Redirect all requests to the index.html file system monolithic  
 
 app.get("*", (req, res) => {
   return res.sendFile(path.join(__dirname, 'out', 'index.html'));
 });
 
-
+// core functionality - dice roll , 2-4 / 15000 acive / 1 room 4 log hash for the game(table), no of players (table indexing),table (moves- userId, diceroll ,game engine-, gameId)
+// 15000 x 4 - reddis / kafka - zomato real time locaiton ()
 
 // Set port and listen
 const PORT = process.env.PORT || 3001;

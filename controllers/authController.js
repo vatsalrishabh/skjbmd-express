@@ -251,6 +251,7 @@ const addDoctor = handleErrorWrapper(async (req, res) => {
     const existingDoctor = await User.findOne({ 
         $or: [{ email: doctorEmail }, { license: license }] 
     });
+//swagger - validation api . 
 
     if (existingDoctor) {
         return res.status(400).json({ message: "Doctor with the same email or license already exists." });
@@ -274,6 +275,7 @@ const addDoctor = handleErrorWrapper(async (req, res) => {
     await newUser.save();
     res.status(200).json({ message: 'Doctor added successfully.' });
 });
+
 
 //@desc- change blocked to true or false 
 //@ method POST api/auth/admin/apprDoctor

@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateJWT, authorizeRoles } = require("../middleware/rbacMiddleware");
 
-const {
-    allBookings} = require('../controllers/bookingController');
+const { allBookings } = require('../controllers/bookingController');
 
 
 // get all bookings
