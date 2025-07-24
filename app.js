@@ -84,8 +84,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Redirect all requests to the index.html file system monolithic  
 
 app.get("*", (req, res) => {
-  return res.sendFile(path.join(__dirname, 'out', 'index.html'));
+
+  return res.status(200).json({
+    message: "Welcome to the API",
+    status: "success", 
 });
+
+})
 
 // core functionality - dice roll , 2-4 / 15000 acive / 1 room 4 log hash for the game(table), no of players (table indexing),table (moves- userId, diceroll ,game engine-, gameId)
 // 15000 x 4 - reddis / kafka - zomato real time locaiton ()
