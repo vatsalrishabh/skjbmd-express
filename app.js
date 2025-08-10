@@ -81,9 +81,9 @@ app.use('/api/admin',rolesRoutes);
 // Serve static images from /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Redirect all requests to the index.html file system monolithic  
+// Redirect all requests to the index.html file system monolithic  .
 
-app.get("*", (req, res) => {
+app.get("/", (req, res) => {
 
   return res.status(200).json({
     message: "Welcome to the API",
