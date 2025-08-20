@@ -3,7 +3,9 @@ const User = require('../models/User');
 const Otp = require('../models/Otp');
 const IdCardPayment = require("../models/IdCardPayment");
 const { sendOtpEmail } = require('../utils/mailer');
-const { sendWhatsappMessage } = require('../controllers/whatsappController');
+//const { sendWhatsappMessage } = require('../controllers/whatsappController'); //internal api
+const { sendWhatsappMessage } = require("../services/externalWhatsapp"); // external api
+
 const Razorpay = require('razorpay'); 
 const { validateWebhookSignature } = require('razorpay/dist/utils/razorpay-utils');
 const { default: SmartphoneOtp } = require('../models/SmartphoneOtp');
@@ -44,8 +46,8 @@ const identityCard = handleErrorWrapper(async (req, res) => {
 
   const mobileNumber = `91${mobile.replace(/\D/g, '')}`;
   const message = `\uD83D\uDD10 SKJBMD IDCARD download OTP\n\nYour OTP is: *${generatedOtp}*\n\nPlease do not share it with anyone.`;
-  const result = await sendWhatsappMessage(mobileNumber, message);
-
+  //const result = await sendWhatsappMessage(mobileNumber, message); // internal api to send message we will not use it from now on
+  const result = await sendWhatsappMessage(mobileNumber, message)
   if (result.success) {
     return res.status(200).json({ status: "otp-sent", message: "OTP भेज दिया गया है" });
   } else {

@@ -1,7 +1,7 @@
 const formidable = require('formidable');
 const { sendOtpEmail } = require('../utils/mailer');
 const { sendOtpEmailForgot } = require('../utils/forgotOtpmail');
-const {sendWhatsappMessage } = require('../controllers/whatsappController');
+const {sendWhatsappMessage } = require('../services/externalWhatsapp');
 const User = require('../models/User');
 const Otp = require('../models/Otp');
 const IdCardPayment  = require('../models/IdCardPayment')
@@ -68,104 +68,115 @@ const registerUser = handleErrorWrapper(async (req, res) => {
   
 
 
-//@desc- get all data along with otp and verify from OTP schema and register
-//@ method POST api/auth/verifyOtp
-//@ access - PUBLIC
+
+//@desc - Verify OTP and register user
+//@route - POST api/auth/verifyOtp
+//@access - PUBLIC
 const verifyOtp = handleErrorWrapper(async (req, res) => {
-    const form = new formidable.IncomingForm({ keepExtensions: true });
-  
+  const form = new formidable.IncomingForm({ keepExtensions: true });
+
   form.parse(req, async (err, fields, files) => {
-  if (err) {
-    console.error('❌ Form parsing error:', err);
-    return res.status(500).json({ error: 'Form parsing failed' });
-  }
-
-  const {
-    email,
-    otp,
-    fullName,
-    password,
-    contactNumber,
-    age,
-    gender,
-    role,
-    fatherOrHusband,
-    aadhaarNumber,
-    pancard,
-    state,
-    district,
-    streetAddress,
-    pincode
-  } = Object.fromEntries(
-    Object.entries(fields).map(([key, val]) => [key, val[0]])
-  );
-
-  // ✅ Only use contactNumber after it's initialized above
-  let savedFilePath = null;
-  const profileFile = files.profilePhoto?.[0];
-  if (profileFile) {
-    const tempPath = profileFile.filepath;
-    const ext = path.extname(profileFile.originalFilename).toLowerCase();
-    const uniqueName = `${contactNumber || Date.now()}${ext}`;
-    const uploadPath = path.join(__dirname, '../uploads');
-
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    if (err) {
+      console.error("❌ Form parsing error:", err);
+      return res.status(400).json({ error: "Invalid form data" });
     }
 
-    const finalPath = path.join(uploadPath, uniqueName);
+    const {
+      email,
+      otp,
+      fullName,
+      password,
+      contactNumber,
+      age,
+      gender,
+      fatherOrHusband,
+      aadhaarNumber,
+      pancard,
+      state,
+      district,
+      streetAddress,
+      pincode,
+    } = Object.fromEntries(
+      Object.entries(fields).map(([key, val]) => [key, val[0]])
+    );
 
     try {
-      fs.copyFileSync(tempPath, finalPath);
-      savedFilePath = `/uploads/${uniqueName}`;
-    } catch (err) {
-      console.error('❌ Error saving file:', err);
-      return res.status(500).json({ message: 'Error saving file.' });
+      // 1️⃣ Verify OTP before proceeding
+      const validOtp = await Otp.findOneAndDelete({ email, otp });
+      if (!validOtp) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // 2️⃣ Check if user already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(409).json({ message: "Email already registered" }); // 409 Conflict
+      }
+
+      // 3️⃣ Handle profile photo upload (optional)
+      let savedFilePath = null;
+      const profileFile = files.profilePhoto?.[0];
+      if (profileFile) {
+        const tempPath = profileFile.filepath;
+        const ext = path.extname(profileFile.originalFilename).toLowerCase();
+        const uniqueName = `${contactNumber || Date.now()}${ext}`;
+        const uploadPath = path.join(__dirname, "../uploads");
+
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+
+        const finalPath = path.join(uploadPath, uniqueName);
+        fs.copyFileSync(tempPath, finalPath);
+        savedFilePath = `/uploads/${uniqueName}`;
+      }
+
+      // 4️⃣ Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // 5️⃣ Build address object
+      const address = {
+        street: streetAddress || "",
+        city: district || "",
+        state: state || "",
+        zipCode: pincode || "",
+        country: "India",
+      };
+
+      // 6️⃣ Create and save user
+      const newUser = new User({
+        userId: await generateUniqueId(),
+        name: fullName,
+        fatherName: fatherOrHusband,
+        age: Number(age),
+        contact: contactNumber,
+        email,
+        password: hashedPassword,
+        gender,
+        role: "member",
+        address,
+        aadharCard: aadhaarNumber,
+        pancard: pancard || "",
+        blocked: false,
+        dpUrl: savedFilePath || null,
+      });
+
+      await newUser.save();
+
+      return res.status(201).json({ message: "Registration successful" });
+    } catch (error) {
+      console.error("❌ Registration error:", error);
+
+      if (error.code === 11000) {
+        // Mongo duplicate key error
+        return res.status(409).json({ message: "User already exists" });
+      }
+
+      return res.status(500).json({ message: "Internal Server Error" });
     }
-  }
-
-  // 1. Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // 2. Construct address
-  const address = {
-    street: streetAddress || '',
-    city: district || '',
-    state: state || '',
-    zipCode: pincode || '',
-    country: 'India'
-  };
-
-  // 3. Create user
-  const newUser = new User({
-    userId: await generateUniqueId(),
-    name: fullName,
-    fatherName: fatherOrHusband,
-    age: Number(age),
-    contact: contactNumber,
-    email,
-    password: hashedPassword,
-    gender,
-    role: "member",
-    address,
-    aadharCard: aadhaarNumber,
-    pancard: pancard || '',
-    blocked: false,
-    dpUrl: savedFilePath || null
   });
-
-  await newUser.save();
-
-  const validOtp = await Otp.findOneAndDelete({ email, otp });
-  if (!validOtp) {
-    return res.status(400).json({ message: 'Invalid OTP. Try again.' });
-  }
-
-  return res.status(200).json({ message: 'Registration successful.' });
 });
 
-
-  });
   
   
 
