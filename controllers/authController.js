@@ -342,8 +342,9 @@ const updateUserRole = async (req, res) => {
 
 
 
-// @desc    Update user role
-// @route   PUT /api/auth/admin/getAllIdCardPayment/:id
+
+// @desc    Get IdCardPayment(s) (single user by userId/contact OR all if none provided)
+// @route   GET /api/auth/admin/getAllIdCardPayment
 // @access  Admin
 const getAllIdCardPayment = async (req, res) => {
   try {
@@ -352,37 +353,64 @@ const getAllIdCardPayment = async (req, res) => {
     let filter = {};
 
     if (userId) {
-      filter.userId = userId; // {userId:11111111}
+      filter.userId = userId; 
     } else if (contact) {
-      filter.contact = contact; // {userId:8123573669}
+      filter.contact = contact;
     }
 
-     // Find the user first
-    const user = await User.findOne(filter);
+    let payments;
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (userId || contact) {
+      // Case 1: Specific user by userId/contact
+      const user = await User.findOne(filter);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      payments = await IdCardPayment.find(filter);
+
+      if (!payments || payments.length === 0) {
+        return res.status(404).json({ message: "No matching records found" });
+      }
+
+      // Attach that user's name
+      const enrichedPayments = payments.map(payment => ({
+        ...payment.toObject(),
+        userName: user.name
+      }));
+
+      return res.status(200).json({ data: enrichedPayments });
+    } else {
+      // Case 2: No filter → fetch all users + all payments
+      const users = await User.find({}, { _id: 1, name: 1, userId: 1, contact: 1 });
+      const payments = await IdCardPayment.find({});
+
+      if (!payments || payments.length === 0) {
+        return res.status(404).json({ message: "No payments found" });
+      }
+
+      // Build a quick lookup map for userId → userName
+      const userMap = {};
+      users.forEach(user => {
+        userMap[user.userId] = user.name;
+        userMap[user.contact] = user.name; // optional, if payments store `contact` instead
+      });
+
+      const enrichedPayments = payments.map(payment => ({
+        ...payment.toObject(),
+        userName: userMap[payment.userId] || userMap[payment.contact] || "Unknown"
+      }));
+
+      return res.status(200).json({ data: enrichedPayments });
     }
 
-    // Use user's _id to fetch payments
-    const payments = await IdCardPayment.find(filter);
-
-    if (!payments || payments.length === 0) {
-      return res.status(404).json({ message: "No matching records found" });
-    }
-
-    // Attach user's name to each payment
-    const enrichedPayments = payments.map(payment => ({
-      ...payment.toObject(),
-      userName: user.name
-    }));
-
-    res.status(200).json({ data: enrichedPayments });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
