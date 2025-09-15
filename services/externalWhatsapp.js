@@ -4,7 +4,7 @@ const axios = require("axios");
 const API_URL = "http://198.38.87.182/api/whatsapp/send-bulk"; // Updated endpoint
 const API_KEY = process.env.WHATSAPP_API_KEY;
 
-const sendWhatsappBulkMessage = async (numbers, message) => {
+const sendWhatsappMessage = async (numbers, message) => {
   try {
     // Ensure numbers is always an array of strings
     const formattedNumbers = Array.isArray(numbers)
@@ -37,7 +37,7 @@ const sendWhatsappBulkMessage = async (numbers, message) => {
   }
 };
 
-module.exports = { sendWhatsappBulkMessage };
+module.exports = { sendWhatsappMessage };
 
 
 
